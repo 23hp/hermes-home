@@ -59,30 +59,11 @@ resource "oci_core_instance" "instance" {
 
   create_vnic_details {
     subnet_id        = data.oci_core_subnets.found_subnet.subnets[0].id
-    assign_public_ip = false
+    assign_public_ip = true
     assign_ipv6ip    = true
   }
 
   metadata = {
     ssh_authorized_keys = var.ssh_public_key
   }
-}
-
-data "oci_core_vnic_attachments" "instance_vnics" {
-  compartment_id = var.compartment_id
-  instance_id    = oci_core_instance.instance.id
-}
-
-data "oci_core_private_ips" "main_vnic_private_ips" {
-  vnic_id = data.oci_core_vnic_attachments.instance_vnics.vnic_attachments[0].vnic_id
-}
-
-resource "oci_core_public_ip" "ip_binding" {
-  compartment_id = var.compartment_id
-  display_name   = "my_reserved_ip"
-  lifetime       = "RESERVED"
-  lifecycle {
-    prevent_destroy = true
-  }
-  private_ip_id = data.oci_core_private_ips.main_vnic_private_ips.private_ips[0].id
 }
