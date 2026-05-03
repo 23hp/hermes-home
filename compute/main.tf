@@ -2,7 +2,7 @@ terraform {
   required_providers {
     oci = {
       source  = "oracle/oci"
-      version = "~> 7.31.0"
+      version = "~> 8.12.0"
     }
   }
 }
@@ -11,9 +11,14 @@ provider "oci" {
   region = var.region
 }
 
-data "oci_core_subnets" "found_subnet" {
+data "oci_core_subnets" "found_public_subnet" {
   compartment_id = var.compartment_id
-  display_name   = "fixed-public-subnet"
+  display_name   = "k8s-public-subnet"
+}
+
+data "oci_core_subnets" "found_private_subnet" {
+  compartment_id = var.compartment_id
+  display_name   = "k8s-private-subnet"
 }
 
 data "oci_identity_availability_domains" "ads" {
@@ -32,19 +37,20 @@ data "oci_core_images" "latest_image" {
 }
 
 locals {
-  subnet = data.oci_core_subnets.found_subnet.subnets[0]
-  azs = data.oci_identity_availability_domains.ads.availability_domains[*].name
+  public_subnet  = data.oci_core_subnets.found_public_subnet.subnets[0]
+  private_subnet = data.oci_core_subnets.found_private_subnet.subnets[0]
+  azs            = data.oci_identity_availability_domains.ads.availability_domains[*].name
 }
 
 resource "oci_containerengine_cluster" "k8s_cluster" {
   compartment_id     = var.compartment_id
   kubernetes_version = "v1.35.2"
   name               = "k8s-cluster"
-  vcn_id             = local.subnet.vcn_id
+  vcn_id             = local.public_subnet.vcn_id
 
   endpoint_config {
     is_public_ip_enabled = true
-    subnet_id            = local.subnet.id
+    subnet_id            = local.public_subnet.id
   }
 
   options {
@@ -56,7 +62,7 @@ resource "oci_containerengine_cluster" "k8s_cluster" {
       pods_cidr     = "10.244.0.0/16"
       services_cidr = "10.96.0.0/16"
     }
-    service_lb_subnet_ids = [local.subnet.id]
+    service_lb_subnet_ids = [local.public_subnet.id]
   }
 }
 
@@ -66,11 +72,11 @@ resource "oci_containerengine_node_pool" "k8s_node_pool" {
   kubernetes_version = "v1.35.2"
   name               = "k8s-node-pool"
   node_config_details {
-    dynamic placement_configs {
+    dynamic "placement_configs" {
       for_each = local.azs
       content {
         availability_domain = placement_configs.value
-        subnet_id           = local.subnet.id
+        subnet_id           = local.private_subnet.id
       }
     }
     size = 1

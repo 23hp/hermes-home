@@ -21,6 +21,6 @@ variable "k8s_ver" {
 }
 
 variable "kube_config_path" {
-  type = string
-  default     = "~/.kube/config"
+  type    = string
+  default = "~/.kube/config"
 }
