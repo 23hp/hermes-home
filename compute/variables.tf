@@ -8,14 +8,19 @@ variable "region" {
   description = "The region to provision the resources in"
 }
 
-variable "instance_pool_size" {
-  type        = number
-  description = "Number of instances in the instance pool"
-  default     = 4
-}
-
 variable "ssh_public_key" {
   type        = string
   description = "Your SSH public key content (e.g., ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC...)"
   sensitive   = false
+}
+
+variable "k8s_ver" {
+  type        = string
+  description = "kubernetes_version"
+  default     = "v1.35.2"
+}
+
+variable "kube_config_path" {
+  type = string
+  default     = "~/.kube/config"
 }
