@@ -56,11 +56,11 @@ resource "oci_containerengine_cluster" "k8s_cluster" {
 }
 
 data "oci_containerengine_node_pool_option" "node_pool_option" {
-    node_pool_option_id = oci_containerengine_cluster.k8s_cluster.id
-    compartment_id = var.compartment_id
-    node_pool_k8s_version = var.k8s_ver
-    node_pool_os_arch = "aarch64"
-    node_pool_os_type = "OL8"
+  node_pool_option_id   = oci_containerengine_cluster.k8s_cluster.id
+  compartment_id        = var.compartment_id
+  node_pool_k8s_version = var.k8s_ver
+  node_pool_os_arch     = "aarch64"
+  node_pool_os_type     = "OL8"
 }
 
 resource "oci_containerengine_node_pool" "k8s_node_pool" {
@@ -84,8 +84,9 @@ resource "oci_containerengine_node_pool" "k8s_node_pool" {
   }
 
   node_source_details {
-    image_id    = data.oci_containerengine_node_pool_option.node_pool_option.sources[0].image_id
-    source_type = "image"
+    boot_volume_size_in_gbs = 200
+    image_id                = data.oci_containerengine_node_pool_option.node_pool_option.sources[0].image_id
+    source_type             = "image"
   }
 
   ssh_public_key = var.ssh_public_key
