@@ -25,26 +25,15 @@ data "oci_identity_availability_domains" "ads" {
   compartment_id = var.compartment_id
 }
 
-data "oci_core_images" "latest_image" {
-  compartment_id           = var.compartment_id
-  operating_system         = "Oracle Linux"
-  operating_system_version = "8"
-  filter {
-    name   = "display_name"
-    values = ["^.*-aarch64-.*$"]
-    regex  = true
-  }
-}
-
 locals {
   public_subnet  = data.oci_core_subnets.found_public_subnet.subnets[0]
   private_subnet = data.oci_core_subnets.found_private_subnet.subnets[0]
-  azs            = data.oci_identity_availability_domains.ads.availability_domains[*].name
+  azs            = data.oci_identity_availability_domains.ads.availability_domains
 }
 
 resource "oci_containerengine_cluster" "k8s_cluster" {
   compartment_id     = var.compartment_id
-  kubernetes_version = "v1.35.2"
+  kubernetes_version = var.k8s_ver
   name               = "k8s-cluster"
   vcn_id             = local.public_subnet.vcn_id
 
@@ -66,21 +55,26 @@ resource "oci_containerengine_cluster" "k8s_cluster" {
   }
 }
 
+data "oci_containerengine_node_pool_option" "node_pool_option" {
+    node_pool_option_id = oci_containerengine_cluster.k8s_cluster.id
+    compartment_id = var.compartment_id
+    node_pool_k8s_version = var.k8s_ver
+    node_pool_os_arch = "aarch64"
+    node_pool_os_type = "OL8"
+}
+
 resource "oci_containerengine_node_pool" "k8s_node_pool" {
   cluster_id         = oci_containerengine_cluster.k8s_cluster.id
   compartment_id     = var.compartment_id
-  kubernetes_version = "v1.35.2"
+  kubernetes_version = var.k8s_ver
   name               = "k8s-node-pool"
+
   node_config_details {
-    dynamic "placement_configs" {
-      for_each = local.azs
-      content {
-        availability_domain = placement_configs.value
-        subnet_id           = local.private_subnet.id
-      }
+    placement_configs {
+      availability_domain = local.azs[1].name
+      subnet_id           = local.private_subnet.id
     }
     size = 1
-
   }
   node_shape = "VM.Standard.A1.Flex"
 
@@ -90,17 +84,13 @@ resource "oci_containerengine_node_pool" "k8s_node_pool" {
   }
 
   node_source_details {
-    image_id    = data.oci_core_images.latest_image.images.0.id
+    image_id    = data.oci_containerengine_node_pool_option.node_pool_option.sources[0].image_id
     source_type = "image"
-  }
-
-  initial_node_labels {
-    key   = "name"
-    value = "k8s-cluster"
   }
 
   ssh_public_key = var.ssh_public_key
 }
+
 
 # export kube config
 resource "null_resource" "export_kube_config" {
