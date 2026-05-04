@@ -60,21 +60,25 @@ resource "oci_core_security_list" "public_subnet_sl" {
   display_name   = "public-subnet-sl"
 
   egress_security_rules {
-    stateless        = false
     destination      = "0.0.0.0/0"
     destination_type = "CIDR_BLOCK"
     protocol         = "all"
   }
 
+  egress_security_rules {
+    description = "private subnet access"
+    destination      = "10.0.1.0/24"
+    destination_type = "CIDR_BLOCK"
+    protocol         = "all"
+  }
+
   ingress_security_rules {
-    stateless   = false
-    source      = "10.0.0.0/16"
+    source      = "10.0.1.0/24"
     source_type = "CIDR_BLOCK"
     protocol    = "all"
   }
 
   ingress_security_rules {
-    stateless   = false
     source      = "0.0.0.0/0"
     source_type = "CIDR_BLOCK"
     protocol    = "6"
@@ -85,7 +89,7 @@ resource "oci_core_security_list" "public_subnet_sl" {
   }
 
   ingress_security_rules {
-    description = "HTTP/HTTPS"
+    description = "HTTP"
     protocol    = "6"
     source      = "0.0.0.0/0"
     source_type = "CIDR_BLOCK"
@@ -101,6 +105,18 @@ resource "oci_core_security_list" "public_subnet_sl" {
     source      = "0.0.0.0/0"
     source_type = "CIDR_BLOCK"
     tcp_options {
+      min = 443
+      max = 443
+    }
+  }
+
+  ingress_security_rules {
+    description  = "https3 port"
+    stateless     = false
+    source        = "0.0.0.0/0"
+    source_type   = "CIDR_BLOCK"
+    protocol      = "17" # UDP
+    udp_options {
       min = 443
       max = 443
     }
@@ -127,6 +143,11 @@ resource "oci_core_route_table" "private_route_table" {
     destination_type  = "CIDR_BLOCK"
     network_entity_id = oci_core_nat_gateway.nat_gw.id
   }
+  route_rules {
+    destination       = data.oci_core_services.all_services.services[0].cidr_block
+    destination_type  = "SERVICE_CIDR_BLOCK"
+    network_entity_id = oci_core_service_gateway.svc_gw.id
+  }
 }
 
 resource "oci_core_security_list" "private_subnet_sl" {
@@ -141,8 +162,7 @@ resource "oci_core_security_list" "private_subnet_sl" {
   }
 
   ingress_security_rules {
-    stateless   = false
-    source      = "10.0.1.0/24"
+    source      = "10.0.0.0/24"
     source_type = "CIDR_BLOCK"
     protocol    = "all"
   }
