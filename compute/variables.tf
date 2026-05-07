@@ -16,8 +16,7 @@ variable "ssh_public_key" {
 
 variable "k8s_ver" {
   type        = string
-  description = "kubernetes_version"
-  default     = "v1.35.2"
+  description = "kubernetes_version, e.g. v1.35.2"
 }
 
 variable "kube_config_path" {
