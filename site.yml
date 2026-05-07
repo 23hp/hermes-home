@@ -43,6 +43,18 @@
           --repository={{ github_repo }} \
           --path={{ github_path }} \
           --personal
+
+    - name: Deploy AGE key for FluxCD
+      kubernetes.core.k8s:
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: sops-age
+            namespace: flux-system
+          stringData:
+            age.agekey: "{{ age_key }}"
+
     - name: Remove default StorageClass (oci-bv) from OKE
       kubernetes.core.k8s:
         definition:
@@ -53,16 +65,6 @@
             annotations:
               storageclass.kubernetes.io/is-default-class: "false"
         state: patched
-    # - name: Deploy AGE key for FluxCD
-    #   kubernetes.core.k8s:
-    #     definition:
-    #       apiVersion: v1
-    #       kind: Secret
-    #       metadata:
-    #         name: sops-age
-    #         namespace: flux-system
-    #       stringData:
-    #         age.agekey: "{{ lookup('env', 'SOPS_AGE_KEY') }}"
 
     - name: Deploy initial config
       kubernetes.core.k8s:
@@ -75,5 +77,4 @@
             namespace: flux-system
           data:
             domain_name: "{{ domain_name }}"
-            acme_email: "{{ acme_email }}"
             reserved_ip_address: "{{ network_result.outputs.reserved_ip_address.value }}"
