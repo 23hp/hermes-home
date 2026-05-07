@@ -71,7 +71,7 @@ resource "oci_containerengine_node_pool" "k8s_node_pool" {
 
   node_config_details {
     placement_configs {
-      availability_domain = local.azs[1].name
+      availability_domain = local.azs[0].name
       subnet_id           = local.private_subnet.id
     }
     size = 1
