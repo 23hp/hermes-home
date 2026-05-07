@@ -4,6 +4,10 @@ terraform {
       source  = "oracle/oci"
       version = "~> 8.12.0"
     }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 5"
+    }
   }
 }
 
@@ -11,12 +15,49 @@ provider "oci" {
   region = var.region
 }
 
+provider "cloudflare" {
+  api_token = var.cloudflare_token
+}
+
+resource "oci_core_public_ip" "reserved_ip" {
+  display_name   = "load-balancer-reserved-ip"
+  compartment_id = var.compartment_id
+  lifetime       = "RESERVED"
+}
+
+data "cloudflare_zones" "zones" {}
+
+locals {
+  reserved_ip_addr = oci_core_public_ip.reserved_ip.ip_address
+  zone_id          = data.cloudflare_zones.zones.result[0].id
+}
+
+resource "cloudflare_dns_record" "zone_apex" {
+  zone_id = local.zone_id
+  name    = "@"
+  ttl     = 1
+  type    = "A"
+  comment = "zone apex record"
+  content = local.reserved_ip_addr
+  proxied = true
+}
+
+resource "cloudflare_dns_record" "wildcard" {
+  zone_id = local.zone_id
+  name    = "*"
+  ttl     = 1
+  type    = "A"
+  comment = "wildcard records"
+  content = local.reserved_ip_addr
+  proxied = true
+}
+
 resource "oci_core_vcn" "vcn" {
-  compartment_id          = var.compartment_id
-  cidr_block              = "10.0.0.0/16"
-  is_ipv6enabled          = true
-  display_name            = "k8s-vcn"
-  dns_label               = "k8svcn"
+  compartment_id = var.compartment_id
+  cidr_block     = "10.0.0.0/16"
+  is_ipv6enabled = true
+  display_name   = "k8s-vcn"
+  dns_label      = "k8svcn"
 }
 
 resource "oci_core_internet_gateway" "internet_gateway" {
@@ -66,7 +107,7 @@ resource "oci_core_security_list" "public_subnet_sl" {
   }
 
   egress_security_rules {
-    description = "private subnet access"
+    description      = "private subnet access"
     destination      = "10.0.1.0/24"
     destination_type = "CIDR_BLOCK"
     protocol         = "all"
@@ -111,11 +152,11 @@ resource "oci_core_security_list" "public_subnet_sl" {
   }
 
   ingress_security_rules {
-    description  = "https3 port"
-    stateless     = false
-    source        = "0.0.0.0/0"
-    source_type   = "CIDR_BLOCK"
-    protocol      = "17" # UDP
+    description = "https3 port"
+    stateless   = false
+    source      = "0.0.0.0/0"
+    source_type = "CIDR_BLOCK"
+    protocol    = "17" # UDP
     udp_options {
       min = 443
       max = 443
@@ -177,10 +218,4 @@ resource "oci_core_subnet" "vcn_private_subnet" {
   security_list_ids          = [oci_core_security_list.private_subnet_sl.id]
   display_name               = "k8s-private-subnet"
   prohibit_public_ip_on_vnic = true
-}
-
-resource "oci_core_public_ip" "reserved_ip" {
-    display_name   = "load-balancer-reserved-ip"
-    compartment_id = var.compartment_id
-    lifetime       = "RESERVED"
 }

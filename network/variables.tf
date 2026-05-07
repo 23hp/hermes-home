@@ -7,3 +7,8 @@ variable "region" {
   type        = string
   description = "The region to provision the resources in"
 }
+
+variable "cloudflare_token" {
+  type        = string
+  description = "Cloudflare API token"
+}

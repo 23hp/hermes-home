@@ -10,6 +10,7 @@
         variables:
           region: "{{ region }}"
           compartment_id: "{{ compartment_id }}"
+          cloudflare_token: "{{ cloudflare_token }}"
       register: network_result
 
     - name: Deploy kubernetes cluster
@@ -75,5 +76,4 @@
           data:
             domain_name: "{{ domain_name }}"
             acme_email: "{{ acme_email }}"
-            lb_ip_id: "{{ network_result.outputs.reserved_ip_id.value }}"
-            public_subnet_id: "{{ network_result.outputs.public_subnet_id.value }}"
+            reserved_ip_address: "{{ network_result.outputs.reserved_ip_address.value }}"
