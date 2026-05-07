@@ -1,0 +1,78 @@
+---
+- name: Set up k8s cluster
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Deploy network
+      community.general.terraform:
+        project_path: "{{ playbook_dir }}/network"
+        state: present
+        variables:
+          region: "{{ region }}"
+          compartment_id: "{{ compartment_id }}"
+      register: network_result
+
+    - name: Deploy kubernetes cluster
+      community.general.terraform:
+        project_path: "{{ playbook_dir }}/compute"
+        state: present
+        variables:
+          region: "{{ region }}"
+          compartment_id: "{{ compartment_id }}"
+          ssh_public_key: "{{ lookup('ansible.builtin.file', '~/.ssh/id_rsa.pub') }}"
+          k8s_ver: "v1.35.2"
+          kube_config_path: "~/.kube/config"
+
+    - name: Remove Flux CD from Kubernetes cluster
+      ansible.builtin.command: flux uninstall --namespace=flux-system --silent
+      tags: [never]
+
+    - name: Create namespace
+      kubernetes.core.k8s:
+        name: flux-system
+        kind: Namespace
+        state: present
+
+    - name: Install flux CD
+      environment:
+        GITHUB_TOKEN: "{{ github_pat }}"
+      ansible.builtin.command: |
+        flux bootstrap github \
+          --owner={{ github_user }} \
+          --repository={{ github_repo }} \
+          --path={{ github_path }} \
+          --personal
+    - name: Remove default StorageClass (oci-bv) from OKE
+      kubernetes.core.k8s:
+        definition:
+          apiVersion: storage.k8s.io/v1
+          kind: StorageClass
+          metadata:
+            name: oci-bv
+            annotations:
+              storageclass.kubernetes.io/is-default-class: "false"
+        state: patched
+    # - name: Deploy AGE key for FluxCD
+    #   kubernetes.core.k8s:
+    #     definition:
+    #       apiVersion: v1
+    #       kind: Secret
+    #       metadata:
+    #         name: sops-age
+    #         namespace: flux-system
+    #       stringData:
+    #         age.agekey: "{{ lookup('env', 'SOPS_AGE_KEY') }}"
+
+    - name: Deploy initial config
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: init-config
+            namespace: flux-system
+          data:
+            domain_name: "{{ domain_name }}"
+            acme_email: "{{ acme_email }}"
+            lb_ip_id: "{{ network_result.outputs.reserved_ip_id.value }}"
