@@ -76,3 +76,4 @@
             domain_name: "{{ domain_name }}"
             acme_email: "{{ acme_email }}"
             lb_ip_id: "{{ network_result.outputs.reserved_ip_id.value }}"
+            public_subnet_id: "{{ network_result.outputs.public_subnet_id.value }}"
