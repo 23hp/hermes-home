@@ -178,3 +178,9 @@ resource "oci_core_subnet" "vcn_private_subnet" {
   display_name               = "k8s-private-subnet"
   prohibit_public_ip_on_vnic = true
 }
+
+resource "oci_core_public_ip" "reserved_ip" {
+    display_name   = "load-balancer-reserved-ip"
+    compartment_id = var.compartment_id
+    lifetime       = "RESERVED"
+}
