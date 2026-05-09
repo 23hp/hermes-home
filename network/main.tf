@@ -93,6 +93,11 @@ resource "oci_core_route_table" "public_route_table" {
     destination_type  = "CIDR_BLOCK"
     network_entity_id = oci_core_internet_gateway.internet_gateway.id
   }
+  route_rules {
+    destination       = "::/0"
+    destination_type  = "CIDR_BLOCK"
+    network_entity_id = oci_core_internet_gateway.internet_gateway.id
+  }
 }
 
 resource "oci_core_security_list" "public_subnet_sl" {
@@ -101,7 +106,15 @@ resource "oci_core_security_list" "public_subnet_sl" {
   display_name   = "public-subnet-sl"
 
   egress_security_rules {
+    description      = "Allow IPv4 traffic out"
     destination      = "0.0.0.0/0"
+    destination_type = "CIDR_BLOCK"
+    protocol         = "all"
+  }
+  
+  egress_security_rules {
+    description      = "Allow IPv6 traffic out"
+    destination      = "::/0"
     destination_type = "CIDR_BLOCK"
     protocol         = "all"
   }

@@ -77,4 +77,5 @@
             namespace: flux-system
           data:
             domain_name: "{{ domain_name }}"
+            public_subnet_id: "{{ network_result.outputs.public_subnet_id.value }}"
             reserved_ip_address: "{{ network_result.outputs.reserved_ip_address.value }}"
