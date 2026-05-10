@@ -3,26 +3,18 @@
   hosts: localhost
   gather_facts: false
   tasks:
-    - name: Deploy network
+    - name: Build Infrastructure
       community.general.terraform:
-        project_path: "{{ playbook_dir }}/network"
+        project_path: "{{ playbook_dir }}"
         state: present
         variables:
           region: "{{ region }}"
           compartment_id: "{{ compartment_id }}"
           cloudflare_token: "{{ cloudflare_token }}"
-      register: network_result
-
-    - name: Deploy kubernetes cluster
-      community.general.terraform:
-        project_path: "{{ playbook_dir }}/compute"
-        state: present
-        variables:
-          region: "{{ region }}"
-          compartment_id: "{{ compartment_id }}"
           ssh_public_key: "{{ lookup('ansible.builtin.file', '~/.ssh/id_rsa.pub') }}"
           k8s_ver: "v1.35.2"
           kube_config_path: "~/.kube/config"
+      register: infra_result
 
     - name: Remove Flux CD from Kubernetes cluster
       ansible.builtin.command: flux uninstall --namespace=flux-system --silent
@@ -77,5 +69,6 @@
             namespace: flux-system
           data:
             domain_name: "{{ domain_name }}"
-            public_subnet_id: "{{ network_result.outputs.public_subnet_id.value }}"
-            reserved_ip_address: "{{ network_result.outputs.reserved_ip_address.value }}"
+            public_subnet_id: "{{ infra_result.outputs.public_subnet_id.value }}"
+            reserved_ip_address: "{{ infra_result.outputs.reserved_ip_address.value }}"
+            network_security_group_id: "{{ infra_result.outputs.network_security_group_id.value }}"

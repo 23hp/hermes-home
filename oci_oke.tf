@@ -1,0 +1,83 @@
+data "oci_identity_availability_domains" "ads" {
+  compartment_id = var.compartment_id
+}
+
+locals {
+  public_subnet_id  = oci_core_subnet.public_subnet.id
+  private_subnet_id = oci_core_subnet.private_subnet.id
+  azs            = data.oci_identity_availability_domains.ads.availability_domains
+}
+
+resource "oci_containerengine_cluster" "k8s_cluster" {
+  compartment_id     = var.compartment_id
+  kubernetes_version = var.k8s_ver
+  name               = "k8s-cluster"
+  vcn_id             = oci_core_vcn.vcn.id
+
+  endpoint_config {
+    is_public_ip_enabled = true
+    subnet_id            = local.public_subnet_id
+  }
+
+  options {
+    add_ons {
+      is_kubernetes_dashboard_enabled = false
+      is_tiller_enabled               = false
+    }
+    kubernetes_network_config {
+      pods_cidr     = "10.244.0.0/16"
+      services_cidr = "10.96.0.0/16"
+    }
+    service_lb_subnet_ids = [local.public_subnet_id]
+  }
+}
+
+data "oci_containerengine_node_pool_option" "node_pool_option" {
+  node_pool_option_id   = oci_containerengine_cluster.k8s_cluster.id
+  compartment_id        = var.compartment_id
+  node_pool_k8s_version = var.k8s_ver
+  node_pool_os_arch     = "aarch64"
+  node_pool_os_type     = "OL8"
+}
+
+resource "oci_containerengine_node_pool" "k8s_node_pool" {
+  cluster_id         = oci_containerengine_cluster.k8s_cluster.id
+  compartment_id     = var.compartment_id
+  kubernetes_version = var.k8s_ver
+  name               = "k8s-node-pool"
+
+  node_config_details {
+    placement_configs {
+      availability_domain = local.azs[0].name
+      subnet_id           = local.private_subnet_id
+    }
+    size = 1
+  }
+  node_shape = "VM.Standard.A1.Flex"
+
+  node_shape_config {
+    ocpus         = 4
+    memory_in_gbs = 24
+  }
+
+  node_source_details {
+    boot_volume_size_in_gbs = 200
+    image_id                = data.oci_containerengine_node_pool_option.node_pool_option.sources[0].image_id
+    source_type             = "image"
+  }
+
+  ssh_public_key = var.ssh_public_key
+}
+
+resource "null_resource" "export_kube_config" {
+
+  provisioner "local-exec" {
+    command = "oci ce cluster create-kubeconfig --cluster-id $cluster_id --file $kube_config --region $oci_region --token-version 2.0.0 --kube-endpoint PUBLIC_ENDPOINT"
+
+    environment = {
+      cluster_id  = oci_containerengine_cluster.k8s_cluster.id
+      oci_region  = var.region
+      kube_config = var.kube_config_path
+    }
+  }
+}
