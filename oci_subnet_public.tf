@@ -51,6 +51,16 @@ resource "oci_core_security_list" "public_subnet_sl" {
     protocol    = "all"
   }
   ingress_security_rules {
+    description = "SSH"
+    source      = "0.0.0.0/0"
+    source_type = "CIDR_BLOCK"
+    protocol    = "6"
+    tcp_options {
+      min = 22
+      max = 22
+    }
+  }
+  ingress_security_rules {
     description = "Allow kubectl traffic in"
     source      = "0.0.0.0/0"
     source_type = "CIDR_BLOCK"
