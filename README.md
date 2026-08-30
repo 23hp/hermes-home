@@ -1,5 +1,6 @@
-# Nix for Hermes on Oracle Cloud
-This project creat a Nix instance on Oracle Cloud
+# Free kubernetes instance on Oracle Cloud
+This project creat a free k8s instance on Oracle Cloud
+
 ## Config .env
 Creat a `.env` file from the `.env.example` and modify and apply it.
 ```bash
