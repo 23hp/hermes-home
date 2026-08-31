@@ -1,8 +1,8 @@
-resource "oci_core_public_ip" "reserved_ip" {
-  display_name   = "load-balancer-reserved-ip"
-  compartment_id = var.compartment_id
-  lifetime       = "RESERVED"
-}
+# resource "oci_core_public_ip" "reserved_ip" {
+#   display_name   = "load-balancer-reserved-ip"
+#   compartment_id = var.compartment_id
+#   lifetime       = "RESERVED"
+# }
 
 resource "oci_core_route_table" "public_route_table" {
   compartment_id = var.compartment_id

@@ -12,7 +12,7 @@
           compartment_id: "{{ compartment_id }}"
           cloudflare_token: "{{ cloudflare_token }}"
           ssh_public_key: "{{ lookup('ansible.builtin.file', '~/.ssh/id_rsa.pub') }}"
-          k8s_ver: "v1.35.2"
+          k8s_ver: "v1.36.1"
           kube_config_path: "~/.kube/config"
       register: infra_result
 
@@ -70,5 +70,5 @@
           data:
             domain_name: "{{ domain_name }}"
             public_subnet_id: "{{ infra_result.outputs.public_subnet_id.value }}"
-            reserved_ip_address: "{{ infra_result.outputs.reserved_ip_address.value }}"
+            # reserved_ip_address: "{{ infra_result.outputs.reserved_ip_address.value }}"
             network_security_group_id: "{{ infra_result.outputs.network_security_group_id.value }}"
